@@ -157,18 +157,20 @@ if st.button("Submit"):
         shap_values_Explanation = explainer(final_input_df)  # 计算SHAP值
         st.write(shap_values_Explanation)
         st.write(shap_values_Explanation.shape)
+        
         # 保存 SHAP 解释对象
         shap_explanations[model_key] = shap_values_Explanation
 
-        # 绘制 SHAP 图
-        st.subheader(f"SHAP Waterfall Plot for Model {model_key}")
-        fig, ax = plt.subplots(figsize=(10, 6))
-        #shap.summary_plot(shap_values_Explanation, final_input_df)
-        shap.plots.waterfall(shap_values_Explanation[0], show=False)  
-        st.pyplot(fig)
-        plt.close(fig)
+        # 仅在符合条件时显示 SHAP 水平图
+        if set(selected_models) == {'C', 'P'} or len(selected_models) == 3:
+            # 绘制 SHAP 图
+            st.subheader(f"SHAP Waterfall Plot for Model {model_key}")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            shap.plots.waterfall(shap_values_Explanation[0], show=False)  
+            st.pyplot(fig)
+            plt.close(fig)
 
-# 处理其他的预测逻辑 (ENDOM screening 或 diagnosis)
+    # 处理其他的预测逻辑 (ENDOM screening 或 diagnosis)
     if len(selected_models) == 1:
         st.error("Error: Please select at least two models for CP/UCP screening or three models for ENDOM diagnosis.")
 
@@ -194,4 +196,3 @@ if st.button("Submit"):
 
     else:
         st.error("Error: Invalid number of models selected. Please select 2 models (C and P) for screening or 3 models for diagnosis.")
-    
