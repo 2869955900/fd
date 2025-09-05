@@ -149,7 +149,7 @@ if st.button("Submit"):
         # 计算 SHAP 值
         explainer = shap.TreeExplainer(models[model_key])
         shap_values_Explanation = explainer.shap_values(final_input_df)  # 计算SHAP值
-        
+        print(shap_values_Explanatio)
         # 保存 SHAP 解释对象
         shap_explanations[model_key] = shap_values_Explanation
 
