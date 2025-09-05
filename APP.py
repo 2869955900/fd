@@ -156,7 +156,8 @@ if st.button("Submit"):
         # 绘制 SHAP 图
         st.subheader(f"SHAP Waterfall Plot for Model {model_key}")
         fig, ax = plt.subplots(figsize=(10, 6))
-        shap.plots.waterfall(shap_values_Explanation[0], show=False)  
+        shap.summary_plot(shap_values_Explanation, final_input_df)
+        # shap.plots.waterfall(shap_values_Explanation[0], show=False)  
         st.pyplot(fig)
         plt.close(fig)
 
