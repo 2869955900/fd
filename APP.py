@@ -31,7 +31,6 @@ st.markdown("""
     </p>
 """, unsafe_allow_html=True)
 
-
 # 加载标准器和模型
 scalers = {
     'C': joblib.load('scaler_standard_C.pkl'),
@@ -149,63 +148,48 @@ if st.button("Submit"):
 
         # 计算 SHAP 值
         explainer = shap.TreeExplainer(models[model_key])
-        shap_explanation = explainer(final_input_df)
-        shap_explanations[model_key] = shap_explanation
+        shap_values_Explanation = explainer.shap_values(final_input_df)  # 计算SHAP值
+        
+        # 保存 SHAP 解释对象
+        shap_explanations[model_key] = shap_values_Explanation
 
-    # 处理模型预测结果和SHAP图显示
-    # 用户选择1个模型时直接报错
+        # 只要该模型有预测结果，就绘制 SHAP 图
+        if predicted_class == 1:  # 如果是阳性预测，绘制瀑布图
+            st.subheader(f"SHAP Waterfall Plot for Model {model_key} (Prediction: Positive)")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            shap.plots.waterfall(shap_values_Explanation[1], show=False)  # 选择类别1的SHAP值
+            st.pyplot(fig)
+            plt.close(fig)
+        else:  # 如果是阴性预测，绘制瀑布图
+            st.subheader(f"SHAP Waterfall Plot for Model {model_key} (Prediction: Negative)")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            shap.plots.waterfall(shap_values_Explanation[0], show=False)  # 选择类别0的SHAP值
+            st.pyplot(fig)
+            plt.close(fig)
+
+    # 处理其他的预测逻辑 (ENDOM screening 或 diagnosis)
     if len(selected_models) == 1:
         st.error("Error: Please select at least two models for CP/UCP screening or three models for ENDOM diagnosis.")
 
-    # 用户选择2个模型但不是C和P组合时也报错
     elif len(selected_models) == 2 and set(selected_models) != {'C', 'P'}:
         st.error("Error: For ENDOM screening, please select both 'C' and 'P' models.")
 
-    # 仅当选择2个模型且为C和P时才处理
     elif len(selected_models) == 2 and set(selected_models) == {'C', 'P'}:
-        # 检查是否有阳性预测（类别1）
         has_positive = any(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
-
+        max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
         if has_positive:
-            # 取两个模型中预测癌症概率更高的值
-            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
             st.write(f"ENDOM screening：{max_proba * 100:.2f}%- high risk")
         else:
-            # 取两个模型中预测癌症概率更高的值（虽然都是阴性）
-            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
             st.write(f"ENDOM screening：{max_proba * 100:.2f}%- low risk")
-        
-        st.subheader("SHAP Waterfall Plots for Selected Models:")
-        for model_key in selected_models:
-            st.write(f"### Model {model_key} SHAP Waterfall Plot")
-            fig, ax = plt.subplots(figsize=(10, 6))
-            shap.plots.waterfall(shap_explanations[model_key], show=False)
-            st.pyplot(fig)
-            plt.close(fig)
 
-    # 用户选择3个模型
     elif len(selected_models) == 3:
-        # 统计阳性预测数量
         positive_count = sum(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
-
-        if positive_count >= 2:  # 多数为阳性
-            # 取三个模型中预测癌症概率最高的值
-            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+        max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+        if positive_count >= 2:
             st.write(f"ENDOM diagnosis：{max_proba * 100:.2f}%- high risk")
-        else:  # 多数为阴性
-            # 计算1减去三个模型中最高癌症概率
-            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+        else:
             low_risk_proba = (1 - max_proba) * 100
             st.write(f"ENDOM diagnosis：{low_risk_proba:.2f}%- low risk")
-        
-        st.subheader("SHAP Waterfall Plots for Selected Models:")
-        for model_key in selected_models:
-            st.write(f"### Model {model_key} SHAP Waterfall Plot")
-            fig, ax = plt.subplots(figsize=(10, 6))
-            shap.plots.waterfall(shap_explanations[model_key], show=False)
-            st.pyplot(fig)
-            plt.close(fig)
 
-    # 其他情况也报错（比如选择0个或超过3个）
     else:
         st.error("Error: Invalid number of models selected. Please select 2 models (C and P) for screening or 3 models for diagnosis.")
