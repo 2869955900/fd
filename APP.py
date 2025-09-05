@@ -31,6 +31,7 @@ st.markdown("""
     </p>
 """, unsafe_allow_html=True)
 
+
 # 加载标准器和模型
 scalers = {
     'C': joblib.load('scaler_standard_C.pkl'),
@@ -109,38 +110,13 @@ for model_key in selected_models:
         # 允许保留较多小数位的输入
         user_input[feature] = st.number_input(f"{feature} ({model_key}):", min_value=0.0, format="%.9f")
 
-# SHAP 值计算与展示
-def get_shap_explanation(model, model_input_df, scaler_key):
-    """
-    计算 SHAP 值并返回解释格式的 SHAP 值。
-    """
-    # 1. 获取模型的 SHAP 解释器
-    explainer = shap.Explainer(model)
-    
-    # 2. 对用户输入的数据进行标准化
-    model_input_scaled = scaler_key.transform(model_input_df[original_features_to_scale])
-    
-    # 3. 计算 SHAP 值
-    shap_values = explainer.shap_values(model_input_scaled)
-    
-    # 返回 SHAP 值解释格式
-    return shap_values
-
-def plot_shap_waterfall(shap_values, feature_names, model_key):
-    """
-    绘制 SHAP 的瀑布图
-    """
-    shap.initjs()  # 初始化 JS 库以支持瀑布图显示
-    st.subheader(f"SHAP Waterfall Plot - {model_key} Model")
-    shap.waterfall_plot(shap_values[0], max_display=10)  # 选择显示的特征数量（最大10个）
-
 # 预测按钮
 if st.button("Submit"):
     # 定义模型预测结果存储字典
     model_predictions = {}
     shap_explanations = {}
 
-    # 对选定的每个模型进行标准化、预测和 SHAP 值计算
+    # 对选定的每个模型进行标准化和预测
     for model_key in selected_models:
         # 针对每个模型构建专用的输入数据
         model_input_df = pd.DataFrame([user_input])
@@ -152,11 +128,18 @@ if st.button("Submit"):
         model_input_df = model_input_df[model_features]
         
         # 对需要标准化的特征进行标准化
-        model_input_df[original_features_to_scale] = scalers[model_key].transform(model_input_df[original_features_to_scale])
+        scaled_features_df = pd.DataFrame(
+            scalers[model_key].transform(model_input_df[original_features_to_scale]),
+            columns=original_features_to_scale,
+            index=model_input_df.index
+        )
         
+        # 将标准化后的特征与未标准化的额外特征合并
+        final_input_df = pd.concat([scaled_features_df, model_input_df[additional_features[model_key]]], axis=1)
+
         # 使用模型进行预测
-        predicted_proba = models[model_key].predict_proba(model_input_df)[0]
-        predicted_class = models[model_key].predict(model_input_df)[0]
+        predicted_proba = models[model_key].predict_proba(final_input_df)[0]
+        predicted_class = models[model_key].predict(final_input_df)[0]
         
         # 保存预测结果
         model_predictions[model_key] = {
@@ -165,19 +148,72 @@ if st.button("Submit"):
         }
 
         # 计算 SHAP 值
-        shap_values = get_shap_explanation(models[model_key], model_input_df, scalers[model_key])
-        shap_explanations[model_key] = shap_values
+        explainer = shap.TreeExplainer(models[model_key])
+        shap_values = explainer.shap_values(final_input_df)
+        
+        # Create an Explanation object
+        shap_explanation = shap.Explanation(
+            values=shap_values[1] if isinstance(shap_values, list) else shap_values,  # For binary classification, focus on class 1
+            base_values=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
+            data=final_input_df.iloc[0],
+            feature_names=final_input_df.columns.tolist()
+        )
+        shap_explanations[model_key] = shap_explanation
 
-        # 绘制 SHAP 瀑布图
-        plot_shap_waterfall(shap_values, model_features, model_key)
+    # 处理模型预测结果和SHAP图显示
+    # 用户选择1个模型时直接报错
+    if len(selected_models) == 1:
+        st.error("Error: Please select at least two models for CP/UCP screening or three models for ENDOM diagnosis.")
 
-    # 根据用户选择的模型展示预测结果和 SHAP 瀑布图
-    for model_key in selected_models:
-        if model_key in shap_explanations:
-            # 获取 SHAP 结果
-            shap_values = shap_explanations[model_key]
-            st.write(f"Predicted Class for {model_key}: {model_predictions[model_key]['class']}")
-            st.write(f"Predicted Probability for {model_key}: {model_predictions[model_key]['proba'][1] * 100:.2f}%")
+    # 用户选择2个模型但不是C和P组合时也报错
+    elif len(selected_models) == 2 and set(selected_models) != {'C', 'P'}:
+        st.error("Error: For ENDOM screening, please select both 'C' and 'P' models.")
 
-            # 绘制 SHAP 瀑布图
-            plot_shap_waterfall(shap_values, original_features_to_scale + additional_features[model_key], model_key)
+    # 仅当选择2个模型且为C和P时才处理
+    elif len(selected_models) == 2 and set(selected_models) == {'C', 'P'}:
+        # 检查是否有阳性预测（类别1）
+        has_positive = any(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
+
+        if has_positive:
+            # 取两个模型中预测癌症概率更高的值
+            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+            st.write(f"ENDOM screening：{max_proba * 100:.2f}%- high risk")
+        else:
+            # 取两个模型中预测癌症概率更高的值（虽然都是阴性）
+            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+            st.write(f"ENDOM screening：{max_proba * 100:.2f}%- low risk")
+        
+        st.subheader("SHAP Waterfall Plots for Selected Models:")
+        for model_key in selected_models:
+            st.write(f"### Model {model_key} SHAP Waterfall Plot")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            shap.plots.waterfall(shap_explanations[model_key], show=False)
+            st.pyplot(fig)
+            plt.close(fig)
+
+    # 用户选择3个模型
+    elif len(selected_models) == 3:
+        # 统计阳性预测数量
+        positive_count = sum(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
+
+        if positive_count >= 2:  # 多数为阳性
+            # 取三个模型中预测癌症概率最高的值
+            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+            st.write(f"ENDOM diagnosis：{max_proba * 100:.2f}%- high risk")
+        else:  # 多数为阴性
+            # 计算1减去三个模型中最高癌症概率
+            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+            low_risk_proba = (1 - max_proba) * 100
+            st.write(f"ENDOM diagnosis：{low_risk_proba:.2f}%- low risk")
+        
+        st.subheader("SHAP Waterfall Plots for Selected Models:")
+        for model_key in selected_models:
+            st.write(f"### Model {model_key} SHAP Waterfall Plot")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            shap.plots.waterfall(shap_explanations[model_key], show=False)
+            st.pyplot(fig)
+            plt.close(fig)
+
+    # 其他情况也报错（比如选择0个或超过3个）
+    else:
+        st.error("Error: Invalid number of models selected. Please select 2 models (C and P) for screening or 3 models for diagnosis.")
