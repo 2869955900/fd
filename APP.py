@@ -154,7 +154,7 @@ if st.button("Submit"):
         # Create an Explanation object
         shap_explanation = shap.Explanation(
             values=shap_values[1] if isinstance(shap_values, list) else shap_values,  # For binary classification, focus on class 1
-            base_values=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
+            base_values=explainer.expected_value if isinstance(explainer.expected_value, list) else explainer.expected_value,
             data=final_input_df.iloc[0],
             feature_names=final_input_df.columns.tolist()
         )
