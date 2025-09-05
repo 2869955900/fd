@@ -148,11 +148,14 @@ if st.button("Submit"):
 
         # 计算 SHAP 值
         explainer = shap.TreeExplainer(models[model_key])
+        
         # 在对每个模型进行预测之前，打印 final_input_df
         st.write(f"Final Input DataFrame for Model {model_key}:")
         st.write(final_input_df)  # 在Streamlit界面显示DataFrame
 
         shap_values_Explanation = explainer.shap_values(final_input_df)  # 计算SHAP值
+        st.write(shap_values_Explanation)
+        st.write(shap_values_Explanation.shape)
         # 保存 SHAP 解释对象
         shap_explanations[model_key] = shap_values_Explanation
 
