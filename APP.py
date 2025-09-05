@@ -3,17 +3,8 @@ import joblib
 import numpy as np
 import pandas as pd
 from PIL import Image
-
-# # 在 Streamlit 中显示标题
-# st.markdown("""
-#     <h1 style='text-align: center; font-weight: bold; font-size: 30px; margin-bottom: 20px;'>
-#         2M-EC Predictive Platform
-#     </h1>
-# """, unsafe_allow_html=True)
-
-# # 显示图片（直接使用 GitHub 上的原始图片 URL）
-# image_url = "https://github.com/Dandan-debug/2M-EC/raw/main/endometrial.svg"
-# st.image(image_url, width=150, caption="Uploaded Image", use_column_width=False)
+import shap
+import matplotlib.pyplot as plt
 
 # 显示图片（图片在上，标题在下）
 st.markdown("""
@@ -39,7 +30,6 @@ st.markdown("""
         Please select either the CP or UCP model based on your requirements.
     </p>
 """, unsafe_allow_html=True)
-
 
 # 加载标准器和模型
 scalers = {
@@ -119,12 +109,38 @@ for model_key in selected_models:
         # 允许保留较多小数位的输入
         user_input[feature] = st.number_input(f"{feature} ({model_key}):", min_value=0.0, format="%.9f")
 
+# SHAP 值计算与展示
+def get_shap_explanation(model, model_input_df, scaler_key):
+    """
+    计算 SHAP 值并返回解释格式的 SHAP 值。
+    """
+    # 1. 获取模型的 SHAP 解释器
+    explainer = shap.Explainer(model)
+    
+    # 2. 对用户输入的数据进行标准化
+    model_input_scaled = scaler_key.transform(model_input_df[original_features_to_scale])
+    
+    # 3. 计算 SHAP 值
+    shap_values = explainer.shap_values(model_input_scaled)
+    
+    # 返回 SHAP 值解释格式
+    return shap_values
+
+def plot_shap_waterfall(shap_values, feature_names, model_key):
+    """
+    绘制 SHAP 的瀑布图
+    """
+    shap.initjs()  # 初始化 JS 库以支持瀑布图显示
+    st.subheader(f"SHAP Waterfall Plot - {model_key} Model")
+    shap.waterfall_plot(shap_values[0], max_display=10)  # 选择显示的特征数量（最大10个）
+
 # 预测按钮
 if st.button("Submit"):
     # 定义模型预测结果存储字典
     model_predictions = {}
+    shap_explanations = {}
 
-    # 对选定的每个模型进行标准化和预测
+    # 对选定的每个模型进行标准化、预测和 SHAP 值计算
     for model_key in selected_models:
         # 针对每个模型构建专用的输入数据
         model_input_df = pd.DataFrame([user_input])
@@ -148,43 +164,20 @@ if st.button("Submit"):
             'class': predicted_class
         }
 
-    # 用户选择1个模型时直接报错
-    if len(selected_models) == 1:
-        st.write("Error")
+        # 计算 SHAP 值
+        shap_values = get_shap_explanation(models[model_key], model_input_df, scalers[model_key])
+        shap_explanations[model_key] = shap_values
 
-    # 用户选择2个模型但不是C和P组合时也报错
-    elif len(selected_models) == 2 and set(selected_models) != {'C', 'P'}:
-        st.write("Error")
+        # 绘制 SHAP 瀑布图
+        plot_shap_waterfall(shap_values, model_features, model_key)
 
-    # 仅当选择2个模型且为C和P时才处理
-    elif len(selected_models) == 2 and set(selected_models) == {'C', 'P'}:
-        # 检查是否有阳性预测（类别1）
-        has_positive = any(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
+    # 根据用户选择的模型展示预测结果和 SHAP 瀑布图
+    for model_key in selected_models:
+        if model_key in shap_explanations:
+            # 获取 SHAP 结果
+            shap_values = shap_explanations[model_key]
+            st.write(f"Predicted Class for {model_key}: {model_predictions[model_key]['class']}")
+            st.write(f"Predicted Probability for {model_key}: {model_predictions[model_key]['proba'][1] * 100:.2f}%")
 
-        if has_positive:
-            # 取两个模型中预测癌症概率更高的值
-            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
-            st.write(f"ENDOM screening：{max_proba * 100:.2f}%- high risk")
-        else:
-            # 取两个模型中预测癌症概率更高的值（虽然都是阴性）
-            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
-            st.write(f"ENDOM screening：{max_proba * 100:.2f}%- low risk")
-
-    # 用户选择3个模型
-    elif len(selected_models) == 3:
-        # 统计阳性预测数量
-        positive_count = sum(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
-
-        if positive_count >= 2:  # 多数为阳性
-            # 取三个模型中预测癌症概率最高的值
-            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
-            st.write(f"ENDOM diagnosis：{max_proba * 100:.2f}%- high risk")
-        else:  # 多数为阴性
-            # 计算1减去三个模型中最高癌症概率
-            max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
-            low_risk_proba = (1 - max_proba) * 100
-            st.write(f"ENDOM diagnosis：{low_risk_proba:.2f}%- low risk")
-
-    # 其他情况也报错（比如选择0个或超过3个）
-    else:
-        st.write("Error")
+            # 绘制 SHAP 瀑布图
+            plot_shap_waterfall(shap_values, original_features_to_scale + additional_features[model_key], model_key)
