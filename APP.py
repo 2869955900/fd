@@ -148,6 +148,10 @@ if st.button("Submit"):
 
         # 计算 SHAP 值
         explainer = shap.TreeExplainer(models[model_key])
+        # 在对每个模型进行预测之前，打印 final_input_df
+        st.write(f"Final Input DataFrame for Model {model_key}:")
+        st.write(final_input_df)  # 在Streamlit界面显示DataFrame
+
         shap_values_Explanation = explainer.shap_values(final_input_df)  # 计算SHAP值
         # 保存 SHAP 解释对象
         shap_explanations[model_key] = shap_values_Explanation
@@ -155,8 +159,8 @@ if st.button("Submit"):
         # 绘制 SHAP 图
         st.subheader(f"SHAP Waterfall Plot for Model {model_key}")
         fig, ax = plt.subplots(figsize=(10, 6))
-        #shap.summary_plot(shap_values_Explanation, final_input_df)
-        shap.plots.waterfall(shap_values_Explanation[0], show=False)  
+        shap.summary_plot(shap_values_Explanation, final_input_df)
+        #shap.plots.waterfall(shap_values_Explanation[0], show=False)  
         st.pyplot(fig)
         plt.close(fig)
 
