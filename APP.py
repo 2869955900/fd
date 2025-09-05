@@ -153,19 +153,12 @@ if st.button("Submit"):
         # 保存 SHAP 解释对象
         shap_explanations[model_key] = shap_values_Explanation
 
-        # 只要该模型有预测结果，就绘制 SHAP 图
-        if predicted_class == 1:  # 如果是阳性预测，绘制瀑布图
-            st.subheader(f"SHAP Waterfall Plot for Model {model_key} (Prediction: Positive)")
-            fig, ax = plt.subplots(figsize=(10, 6))
-            shap.plots.waterfall(shap_values_Explanation[1], show=False)  # 选择类别1的SHAP值
-            st.pyplot(fig)
-            plt.close(fig)
-        else:  # 如果是阴性预测，绘制瀑布图
-            st.subheader(f"SHAP Waterfall Plot for Model {model_key} (Prediction: Negative)")
-            fig, ax = plt.subplots(figsize=(10, 6))
-            shap.plots.waterfall(shap_values_Explanation[0], show=False)  # 选择类别0的SHAP值
-            st.pyplot(fig)
-            plt.close(fig)
+        # 绘制 SHAP 图
+        st.subheader(f"SHAP Waterfall Plot for Model {model_key}")
+        fig, ax = plt.subplots(figsize=(10, 6))
+        shap.plots.waterfall(shap_values_Explanation[0], show=False)  
+        st.pyplot(fig)
+        plt.close(fig)
 
     # 处理其他的预测逻辑 (ENDOM screening 或 diagnosis)
     if len(selected_models) == 1:
