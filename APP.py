@@ -110,35 +110,6 @@ for model_key in selected_models:
         user_input[feature] = st.number_input(f"{feature} ({model_key}):", min_value=0.0, format="%.9f")
 
 
-# 处理其他的预测逻辑 (ENDOM screening 或 diagnosis)
-    if len(selected_models) == 1:
-        st.error("Error: Please select at least two models for CP/UCP screening or three models for ENDOM diagnosis.")
-
-    elif len(selected_models) == 2 and set(selected_models) != {'C', 'P'}:
-        st.error("Error: For ENDOM screening, please select both 'C' and 'P' models.")
-
-    elif len(selected_models) == 2 and set(selected_models) == {'C', 'P'}:
-        has_positive = any(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
-        max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
-        if has_positive:
-            st.write(f"ENDOM screening：{max_proba * 100:.2f}%- high risk")
-        else:
-            st.write(f"ENDOM screening：{max_proba * 100:.2f}%- low risk")
-
-    elif len(selected_models) == 3:
-        positive_count = sum(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
-        max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
-        if positive_count >= 2:
-            st.write(f"ENDOM diagnosis：{max_proba * 100:.2f}%- high risk")
-        else:
-            low_risk_proba = (1 - max_proba) * 100
-            st.write(f"ENDOM diagnosis：{low_risk_proba:.2f}%- low risk")
-
-    else:
-        st.error("Error: Invalid number of models selected. Please select 2 models (C and P) for screening or 3 models for diagnosis.")
-
-
-
 # 预测按钮
 if st.button("Submit"):
     # 定义模型预测结果存储字典
@@ -197,4 +168,30 @@ if st.button("Submit"):
         st.pyplot(fig)
         plt.close(fig)
 
+# 处理其他的预测逻辑 (ENDOM screening 或 diagnosis)
+    if len(selected_models) == 1:
+        st.error("Error: Please select at least two models for CP/UCP screening or three models for ENDOM diagnosis.")
+
+    elif len(selected_models) == 2 and set(selected_models) != {'C', 'P'}:
+        st.error("Error: For ENDOM screening, please select both 'C' and 'P' models.")
+
+    elif len(selected_models) == 2 and set(selected_models) == {'C', 'P'}:
+        has_positive = any(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
+        max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+        if has_positive:
+            st.write(f"ENDOM screening：{max_proba * 100:.2f}%- high risk")
+        else:
+            st.write(f"ENDOM screening：{max_proba * 100:.2f}%- low risk")
+
+    elif len(selected_models) == 3:
+        positive_count = sum(model_predictions[model_key]['class'] == 1 for model_key in selected_models)
+        max_proba = max(model_predictions[model_key]['proba'][1] for model_key in selected_models)
+        if positive_count >= 2:
+            st.write(f"ENDOM diagnosis：{max_proba * 100:.2f}%- high risk")
+        else:
+            low_risk_proba = (1 - max_proba) * 100
+            st.write(f"ENDOM diagnosis：{low_risk_proba:.2f}%- low risk")
+
+    else:
+        st.error("Error: Invalid number of models selected. Please select 2 models (C and P) for screening or 3 models for diagnosis.")
     
