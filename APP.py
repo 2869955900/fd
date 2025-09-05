@@ -149,15 +149,14 @@ if st.button("Submit"):
         # 计算 SHAP 值
         explainer = shap.TreeExplainer(models[model_key])
         shap_values_Explanation = explainer.shap_values(final_input_df)  # 计算SHAP值
-        print(shap_values_Explanation)
         # 保存 SHAP 解释对象
         shap_explanations[model_key] = shap_values_Explanation
 
         # 绘制 SHAP 图
         st.subheader(f"SHAP Waterfall Plot for Model {model_key}")
         fig, ax = plt.subplots(figsize=(10, 6))
-        shap.summary_plot(shap_values_Explanation, final_input_df)
-        # shap.plots.waterfall(shap_values_Explanation[0], show=False)  
+        #shap.summary_plot(shap_values_Explanation, final_input_df)
+        shap.plots.waterfall(shap_values_Explanation, show=False)  
         st.pyplot(fig)
         plt.close(fig)
 
