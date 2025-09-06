@@ -17,17 +17,17 @@ st.markdown("""
 # 显示描述文本
 st.markdown("""
     <p style='text-align: left; font-size: 16px; margin-bottom: 28px;'>
-        The 2M-EC (Bimodal Multilevel Endometrial Cancer) model is designed for patient-centered minimally invasive ENDOM screening with high sensitivity and precise diagnosis.<br><br>
-        Utilizes multiple models to calculate cancer risk probabilities:<br>
-        • <b>CP</b> (Clinical-Pathological Model): Minimally invasive screening model for early-stage endometrial cancer<br>
-        • <b>UCP</b> (Ultra-precision Clinical-Piological Model): Precision screening model for endometrial cancer<br><br>
+        The 2M-EC (Multimodal Multilevel Endometrial Cancer) is a patient-first platform for the early screening of endometrial cancer (EC) and high-risk subtype detection.<br><br>
+        Employs patient-centered models to calculate specific risk probabilities:<br>
+        • <b>"CP"</b> (EC minimally invasive screening): Integrating cervicovaginal metabolic profiling and plasma molecular profiling with routine clinical indicators for early-stage cancer screening<br>
+        • <b>"UCP"</b> (EC precision screening): Integrating uterine metabolic profiling, cervicovaginal metabolic profiling and plasma molecular profiling with routine clinical indicators for precision cancer screening and high-risk subtype detection<br><br>
         Input data includes:<br>
-        • Patient clinical information: demographics, medical history, ultrasonographic imaging, and tumor markers (HE4 and CA125)<br>
-        • Multi-source biospecimen omics data: endometrial metabolic omics, cervical metabolic omics, and plasma molecular omics<br><br>
-        Risk calculation:<br>
+        • Patient baseline: demographics, medical history, ultrasound examination results, and plasma tumor markers (HE4 and CA125)<br>
+        • Biofluid molecular omics: cervicovaginal metabolic omics, uterine metabolic omics, and plasma molecular omics<br><br>
+        Risk screening results annotation:<br>
         • High-risk probability = Highest cancer probability across models<br>
         • Low-risk probability = 1 - Highest cancer probability<br><br>
-        Please select either the CP or UCP model based on your requirements.
+        Select the model that best fits your requirements and submit: "CP" or "UCP".
     </p>
 """, unsafe_allow_html=True)
 
